@@ -20,7 +20,6 @@ const flightKey = JSON.stringify(identity);
 async function buildRadarSnapshot() {
   return singleFlight(flights, flightKey, () => {
     const development = process.env.NODE_ENV === "development";
-    if (development) console.info("[panta-radar] snapshot builder invoked");
     return loadRadarSnapshot({listMarkets, getMarket, getMarketTrades}, development);
   });
 }

@@ -1,42 +1,102 @@
 # Panta Market Radar
 
-**Live Market & Resolution Intelligence** — a standalone, read-only Next.js + TypeScript application. Powered by Panta.
+**Live Market & Resolution Intelligence** — a read-only view of the current Panta API sample, with live probabilities, trade activity, and recent resolutions.
 
-## Implemented
+## Why it exists
 
-- Live market probabilities from detail responses and recent timestamped trade activity.
-- A sampled Resolution Explorer with category/outcome filters and market detail pages.
-- Market Pulse metrics derived only from the loaded sample.
-- Explicit unavailable states for missing prices, volume, activity, or resolved discovery.
+Prediction-market APIs can expose sparse, inconsistent, and fast-changing state. Panta Market Radar turns the current sample into a clear intelligence view while preserving uncertainty instead of inventing missing data.
 
-No wallets, transactions, authentication, AI, database, or persistent market history.
+## What it does
 
-## Run locally
+- **Live Now:** current YES/NO probabilities from market detail, observed volume, closing time, and timestamped trade activity.
+- **Recently Resolved:** a sampled resolution explorer with category and YES/NO/Unknown filters.
+- **Market Pulse:** counts, categories, and volume derived only from loaded markets.
+- **Market detail:** metadata, probabilities, lifecycle, outcome, and active-market activity.
+- **Snapshot semantics:** capture timestamps and honest unavailable states. Unknown/future trade timestamps remain unclassified; missing prices and volume never become zero.
 
-Requires Node.js **22.18.0 or newer**.
+## Panta API integration
 
-1. Run `npm install`.
-2. Copy `.env.example` to `.env.local` and configure:
-   - `PANTA_API_BASE_URL`: fixed upstream URL, normally `https://live-api.panta.market/api/v1`.
-   - `PANTA_API_KEY`: your server-side Panta API key.
-3. Run `npm run dev` and open `http://localhost:3000`.
+| Endpoint | Use |
+|---|---|
+| `GET /markets/` | Bounded catalog discovery and local lifecycle validation |
+| `GET /markets/{marketId}/` | Current prices, detail metadata, and lifecycle evidence |
+| `GET /markets/{marketId}/trades/?limit=200` | Active-market activity; nullable timestamps are handled explicitly |
 
-For a production build, run `npm run build`, then `npm start`.
+Active discovery scans at most three 50-row pages per phase and selects at most 20 candidates. Resolved discovery tries one filtered page, falling back to at most two unfiltered pages when no valid resolved markets are found, then selects at most ten. Detail evidence indicating resolution/cancellation excludes conflicting live candidates.
 
-Validation: `npm run lint`, `npm run typecheck`, and `npm test`.
+The API key is injected server-side through `X-Api-Key`. Catalog prices are not treated as current prices. No undocumented volume fields are used.
 
-## Data and cache semantics
+## Architecture
 
-The homepage and `/api/radar` share a Next.js cache with 150-second revalidation. Detail pages capture separate snapshots. Cache identities include environment and normalized upstream URL, never credentials.
+```text
+Browser → Next.js App Router → server-only Panta client → Panta API
+```
 
-Discovery scans at most three 50-row pages per active phase and selects at most 20 candidates. Resolved discovery tries one filtered page and, when necessary, up to two unfiltered pages, selecting at most ten markets. These are observed samples, not global Panta totals or a complete archive.
+The homepage and `/api/radar` share a 150-second Next.js cache. Detail pages have separate timestamped captures. One enrichment pool processes five markets at a time, with at most ten upstream HTTP requests during snapshot enrichment. A process-local promise guard prevents concurrent cold radar builds within one Node process.
 
-Detail/trade enrichment uses one pool of five markets (at most ten upstream HTTP requests during enrichment). Conflicting resolved/cancelled detail evidence excludes a candidate from Live Now. A resolved-discovery failure preserves active data and marks the resolved section unavailable.
+Resolved-discovery failure preserves active data and marks resolved data unavailable. Development diagnostics are omitted from production.
 
-Unknown, invalid, and future trade timestamps remain unclassified; window counts cover only valid timestamps. A full 200-row trade tape may be truncated. Missing data is never substituted with numeric zero.
+## Running locally
 
-## Demo topology and security
+Requires **Node.js 22.18.0 or newer**.
 
-The in-flight promise guard prevents duplicate cold radar builds **within one Node process** and clears after success or failure. It does not coordinate multiple instances. Use a single-instance demo or an explicitly understood shared-cache topology; development and production namespaces are separate. Next.js may serve the prior snapshot while revalidating.
+```sh
+npm install
+```
 
-`.env.local` is ignored. Never commit secrets. API credentials stay server-only, upstream access is GET-only, and there is no generic proxy or trading functionality. Products display **Powered by Panta**.
+Copy `.env.example` to `.env.local`, set your server-side API key, then run:
+
+```sh
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+Production:
+
+```sh
+npm run build
+npm start
+```
+
+The host supplies environment variables and may set `PORT`. Use **one application replica** with a persistent Node process for the demo. No Docker or additional services are required.
+
+`GET /api/health` returns application liveness only. It does not query Panta, verify API credentials, or expose configuration.
+
+## Environment variables
+
+| Variable | Example / placeholder |
+|---|---|
+| `PANTA_API_BASE_URL` | `https://live-api.panta.market/api/v1` |
+| `PANTA_API_KEY` | `replace_with_your_server_side_api_key` |
+
+Environment files are ignored except `.env.example`. Never commit keys, JWTs, or other secrets; use the host's secret configuration for deployment. Cache identities include the normalized upstream URL, never credentials.
+
+## Tests
+
+The current suite covers discovery bounds, normalization, unavailable values, timestamp classification, lifecycle conflicts, resolved failure isolation, filtering, outcomes, and concurrency coordination.
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run check:secrets
+```
+
+The lightweight secret check scans repository files and, after building, browser assets for key/JWT/private-key patterns and the configured API key. It is a useful check, not a guarantee against every possible secret format.
+
+See [production smoke checklist](submission/smoke-test-checklist.md) and the text drafts in [submission/](submission/).
+
+## Known limitations
+
+- Bounded sampling is not global market coverage or a complete resolution archive.
+- Panta responses may differ between snapshots, including missing prices or volume.
+- Trade `blockTime` may be unavailable; a 200-row response may be truncated.
+- No historical database, accounts, alerts, AI, or trading functionality.
+- Coordination is process-local. The Next.js cache is **not a global distributed rate limiter**; multi-instance deployments need an explicitly understood cache topology.
+- Next.js may serve the prior snapshot during revalidation. Separate detail captures can differ from the homepage sample.
+
+## Powered by Panta
+
+**Powered by Panta** is visible throughout the product. API references: [official Panta documentation](https://github.com/Kaito-HQ/panta-api-pub).
