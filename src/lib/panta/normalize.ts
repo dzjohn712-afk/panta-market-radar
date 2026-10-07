@@ -1,5 +1,6 @@
 import type {
   ActiveMarketStatus,
+  CatalogDiagnostics,
   NormalizedCatalogMarket,
   PantaMarket,
 } from "./types";
@@ -24,56 +25,127 @@ function optionalTimestamp(value: unknown): number | null {
 }
 
 function nonNegativeNumber(value: unknown): number {
-  const number = typeof value === "number" ? value : Number(value);
+  const number =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
   return Number.isFinite(number) && number >= 0 ? number : 0;
+}
+
+interface MarketInspection {
+  market: NormalizedCatalogMarket | null;
+  emptyTitle: boolean;
+  expired: boolean;
+  resolvedCancelled: boolean;
+  malformedId: boolean;
+  malformedEndTime: boolean;
+  invalidLifecycle: boolean;
+  missingCategory: boolean;
+}
+
+function inspectCatalogMarket(value: unknown, nowSeconds: number): MarketInspection {
+  const row = asRecord(value);
+  const marketId = row ? optionalString(row.marketId) : null;
+  const title = row ? optionalString(row.title) : null;
+  const category = row ? optionalString(row.category) : null;
+  const rawPhase = row ? optionalString(row.phase)?.toLowerCase() : null;
+  const status = row ? optionalString(row.status)?.toLowerCase() : null;
+  const endTime = row ? optionalTimestamp(row.endTime) : null;
+
+  const malformedId = !marketId || !MARKET_ID_PATTERN.test(marketId);
+  const emptyTitle = !title;
+  const missingCategory = !category;
+  const phaseIsResolvedCancelled = Boolean(rawPhase && EXCLUDED_STATUSES.has(rawPhase));
+  const resolvedCancelled = Boolean(
+    row?.resolved === true ||
+      (status && EXCLUDED_STATUSES.has(status)) ||
+      phaseIsResolvedCancelled,
+  );
+  const invalidLifecycle = Boolean(
+    !rawPhase ||
+      (!ACTIVE_PHASES.has(rawPhase as ActiveMarketStatus) && !phaseIsResolvedCancelled),
+  );
+  const malformedEndTime = endTime === null;
+  const expired = endTime !== null && endTime <= nowSeconds;
+
+  const rejected =
+    malformedId ||
+    emptyTitle ||
+    missingCategory ||
+    resolvedCancelled ||
+    invalidLifecycle ||
+    malformedEndTime ||
+    expired;
+
+  return {
+    market:
+      !row || rejected || !marketId || !title || !category || !rawPhase || !endTime
+        ? null
+        : {
+            marketId,
+            category: category.toLowerCase(),
+            title,
+            description: optionalString(row.description),
+            phase: rawPhase as ActiveMarketStatus,
+            marketType: optionalString(row.marketType),
+            startTime: optionalTimestamp(row.startTime),
+            endTime,
+            resolutionTime: optionalTimestamp(row.resolutionTime),
+            region: optionalString(row.region),
+            volumeUsdc: nonNegativeNumber(row.volumeUsdc),
+          },
+    emptyTitle,
+    expired,
+    resolvedCancelled,
+    malformedId,
+    malformedEndTime,
+    invalidLifecycle,
+    missingCategory,
+  };
 }
 
 export function normalizeCatalogMarket(
   value: unknown,
   nowSeconds = Math.floor(Date.now() / 1_000),
 ): NormalizedCatalogMarket | null {
-  const row = asRecord(value);
-  if (!row) return null;
-
-  const marketId = optionalString(row.marketId);
-  const title = optionalString(row.title);
-  const category = optionalString(row.category);
-  const rawPhase = optionalString(row.phase)?.toLowerCase();
-  const status = optionalString(row.status)?.toLowerCase();
-  const endTime = optionalTimestamp(row.endTime);
-
-  if (!marketId || !MARKET_ID_PATTERN.test(marketId)) return null;
-  if (!title || !category) return null;
-  if (!rawPhase || !ACTIVE_PHASES.has(rawPhase as ActiveMarketStatus)) return null;
-  if (row.resolved === true || (status && EXCLUDED_STATUSES.has(status))) return null;
-  if (!endTime || endTime <= nowSeconds) return null;
-
-  return {
-    marketId,
-    category: category.toLowerCase(),
-    title,
-    description: optionalString(row.description),
-    phase: rawPhase as ActiveMarketStatus,
-    marketType: optionalString(row.marketType),
-    startTime: optionalTimestamp(row.startTime),
-    endTime,
-    resolutionTime: optionalTimestamp(row.resolutionTime),
-    region: optionalString(row.region),
-    volumeUsdc: nonNegativeNumber(row.volumeUsdc),
-  };
+  return inspectCatalogMarket(value, nowSeconds).market;
 }
 
-export function normalizeAndDeduplicateMarkets(
+export function analyzeCatalogMarkets(
   rows: readonly PantaMarket[] | readonly unknown[],
   nowSeconds = Math.floor(Date.now() / 1_000),
-): NormalizedCatalogMarket[] {
+): { markets: NormalizedCatalogMarket[]; diagnostics: CatalogDiagnostics } {
   const byId = new Map<string, NormalizedCatalogMarket>();
+  const diagnostics: CatalogDiagnostics = {
+    rawRows: rows.length,
+    emptyTitleRows: 0,
+    expiredRows: 0,
+    resolvedCancelledRows: 0,
+    malformedIdRows: 0,
+    malformedEndTimeRows: 0,
+    invalidLifecycleRows: 0,
+    missingCategoryRows: 0,
+    duplicateRows: 0,
+    finalValidRows: 0,
+  };
 
   for (const row of rows) {
-    const market = normalizeCatalogMarket(row, nowSeconds);
+    const inspection = inspectCatalogMarket(row, nowSeconds);
+    if (inspection.emptyTitle) diagnostics.emptyTitleRows += 1;
+    if (inspection.expired) diagnostics.expiredRows += 1;
+    if (inspection.resolvedCancelled) diagnostics.resolvedCancelledRows += 1;
+    if (inspection.malformedId) diagnostics.malformedIdRows += 1;
+    if (inspection.malformedEndTime) diagnostics.malformedEndTimeRows += 1;
+    if (inspection.invalidLifecycle) diagnostics.invalidLifecycleRows += 1;
+    if (inspection.missingCategory) diagnostics.missingCategoryRows += 1;
+
+    const market = inspection.market;
     if (!market) continue;
 
     const existing = byId.get(market.marketId);
+    if (existing) diagnostics.duplicateRows += 1;
     if (
       !existing ||
       (existing.phase === "primary" && market.phase === "secondary") ||
@@ -83,7 +155,16 @@ export function normalizeAndDeduplicateMarkets(
     }
   }
 
-  return [...byId.values()];
+  const markets = [...byId.values()];
+  diagnostics.finalValidRows = markets.length;
+  return { markets, diagnostics };
+}
+
+export function normalizeAndDeduplicateMarkets(
+  rows: readonly PantaMarket[] | readonly unknown[],
+  nowSeconds = Math.floor(Date.now() / 1_000),
+): NormalizedCatalogMarket[] {
+  return analyzeCatalogMarkets(rows, nowSeconds).markets;
 }
 
 function byVolumeThenClose(a: NormalizedCatalogMarket, b: NormalizedCatalogMarket): number {

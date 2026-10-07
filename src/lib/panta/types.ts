@@ -77,8 +77,23 @@ export interface RadarCoverage {
   candidatesSelected: number;
 }
 
+export interface CatalogDiagnostics {
+  rawRows: number;
+  emptyTitleRows: number;
+  expiredRows: number;
+  resolvedCancelledRows: number;
+  malformedIdRows: number;
+  malformedEndTimeRows: number;
+  invalidLifecycleRows: number;
+  missingCategoryRows: number;
+  duplicateRows: number;
+  finalValidRows: number;
+}
+
 export interface RadarCatalogSnapshot {
   generatedAt: string;
   coverage: RadarCoverage;
   markets: NormalizedCatalogMarket[];
+  /** Present only in development; never part of the production API response. */
+  diagnostics?: CatalogDiagnostics;
 }

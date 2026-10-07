@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  analyzeCatalogMarkets,
   normalizeAndDeduplicateMarkets,
   normalizeCatalogMarket,
   selectCatalogCandidates,
@@ -37,6 +38,24 @@ test("normalizes a valid active catalog row without catalog prices", () => {
   assert.equal(normalized?.title, "Valid title");
   assert.equal(normalized?.volumeUsdc, 12.5);
   assert.equal("yesPrice" in (normalized ?? {}), false);
+});
+
+test("preserves valid volumeUsdc numeric strings and safely defaults invalid values", () => {
+  const cases: Array<[PantaMarket["volumeUsdc"], number]> = [
+    ["11.00", 11],
+    ["349.369134", 349.369134],
+    ["0.00", 0],
+    ["not-a-number", 0],
+    ["", 0],
+    [-1, 0],
+    [Number.POSITIVE_INFINITY, 0],
+    [undefined, 0],
+  ];
+
+  for (const [raw, expected] of cases) {
+    const normalized = normalizeCatalogMarket(market(1, { volumeUsdc: raw }), NOW);
+    assert.equal(normalized?.volumeUsdc, expected);
+  }
 });
 
 test("filters malformed, untitled, inactive, resolved, cancelled, and expired rows", () => {
@@ -90,4 +109,35 @@ test("preselects at most 20 using volume, closing time, and crypto representatio
   assert.ok(selected.some((item) => item.marketId === marketId(29)));
   assert.ok(selected.some((item) => item.category === "crypto"));
   assert.equal(new Set(selected.map((item) => item.marketId)).size, selected.length);
+});
+
+test("reports catalog rejection and duplicate diagnostics without weakening filters", () => {
+  const id = marketId(1);
+  const analysis = analyzeCatalogMarkets(
+    [
+      market(1, { marketId: id }),
+      market(2, { marketId: id, phase: "secondary" }),
+      market(3, { title: " " }),
+      market(4, { endTime: NOW }),
+      market(5, { resolved: true }),
+      market(6, { marketId: "bad-id" }),
+      market(7, { endTime: null }),
+      market(8, { phase: "unknown" }),
+      market(9, { category: "" }),
+    ],
+    NOW,
+  );
+
+  assert.deepEqual(analysis.diagnostics, {
+    rawRows: 9,
+    emptyTitleRows: 1,
+    expiredRows: 1,
+    resolvedCancelledRows: 1,
+    malformedIdRows: 1,
+    malformedEndTimeRows: 1,
+    invalidLifecycleRows: 1,
+    missingCategoryRows: 1,
+    duplicateRows: 1,
+    finalValidRows: 1,
+  });
 });
