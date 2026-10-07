@@ -7,7 +7,7 @@ import { singleFlight } from "./coordination";
 import { upstreamNamespace } from "./cache-namespace";
 
 const SNAPSHOT_TTL_MS = 150_000;
-const identity = ["panta-radar-v31", process.env.NODE_ENV ?? "unknown",
+const identity = ["panta-radar-v31-no-fixtures", process.env.NODE_ENV ?? "unknown",
   upstreamNamespace(process.env.PANTA_API_BASE_URL)];
 // node:process is the same object across the page/route VM contexts.
 // This guard coordinates one Node process, not multiple deployment instances.

@@ -22,6 +22,15 @@ function optionalString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+/** Only explicit fixture markers qualify; ordinary uses of "test" do not. */
+export function isExplicitTestFixture(value: unknown): boolean {
+  const row = asRecord(value);
+  if (!row) return false;
+  const title = optionalString(row.title)?.toLowerCase() ?? "";
+  const description = (optionalString(row.description) ?? "").toLowerCase().replace(/\s+/g, " ");
+  return title.startsWith("[test]") || description.includes("panta api playground test market");
+}
+
 function optionalTimestamp(value: unknown): number | null {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -226,6 +235,7 @@ export function normalizeResolvedMarkets(
   for (const value of rows) {
     const row = asRecord(value);
     if (!row) continue;
+    if (isExplicitTestFixture(row)) continue;
 
     const marketId = optionalString(row.marketId);
     const title = optionalString(row.title);
