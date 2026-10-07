@@ -71,6 +71,8 @@ export interface NormalizedCatalogMarket {
 }
 
 export interface RadarCoverage {
+  primaryPagesFetched: number;
+  secondaryPagesFetched: number;
   primaryFetched: number;
   secondaryFetched: number;
   validAfterFiltering: number;
@@ -78,7 +80,7 @@ export interface RadarCoverage {
 }
 
 export interface CatalogDiagnostics {
-  rawRows: number;
+  totalRawRows: number;
   emptyTitleRows: number;
   expiredRows: number;
   resolvedCancelledRows: number;
@@ -87,6 +89,7 @@ export interface CatalogDiagnostics {
   invalidLifecycleRows: number;
   missingCategoryRows: number;
   duplicateRows: number;
+  conflictingDuplicateRows: number;
   finalValidRows: number;
 }
 

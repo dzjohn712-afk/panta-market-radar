@@ -129,7 +129,7 @@ test("reports catalog rejection and duplicate diagnostics without weakening filt
   );
 
   assert.deepEqual(analysis.diagnostics, {
-    rawRows: 9,
+    totalRawRows: 9,
     emptyTitleRows: 1,
     expiredRows: 1,
     resolvedCancelledRows: 1,
@@ -138,6 +138,15 @@ test("reports catalog rejection and duplicate diagnostics without weakening filt
     invalidLifecycleRows: 1,
     missingCategoryRows: 1,
     duplicateRows: 1,
+    conflictingDuplicateRows: 1,
     finalValidRows: 1,
   });
+});
+
+test("does not report identical duplicate rows as conflicting", () => {
+  const row = market(1);
+  const analysis = analyzeCatalogMarkets([row, { ...row }], NOW);
+
+  assert.equal(analysis.diagnostics.duplicateRows, 1);
+  assert.equal(analysis.diagnostics.conflictingDuplicateRows, 0);
 });

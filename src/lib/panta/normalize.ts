@@ -119,7 +119,7 @@ export function analyzeCatalogMarkets(
 ): { markets: NormalizedCatalogMarket[]; diagnostics: CatalogDiagnostics } {
   const byId = new Map<string, NormalizedCatalogMarket>();
   const diagnostics: CatalogDiagnostics = {
-    rawRows: rows.length,
+    totalRawRows: rows.length,
     emptyTitleRows: 0,
     expiredRows: 0,
     resolvedCancelledRows: 0,
@@ -128,6 +128,7 @@ export function analyzeCatalogMarkets(
     invalidLifecycleRows: 0,
     missingCategoryRows: 0,
     duplicateRows: 0,
+    conflictingDuplicateRows: 0,
     finalValidRows: 0,
   };
 
@@ -145,7 +146,12 @@ export function analyzeCatalogMarkets(
     if (!market) continue;
 
     const existing = byId.get(market.marketId);
-    if (existing) diagnostics.duplicateRows += 1;
+    if (existing) {
+      diagnostics.duplicateRows += 1;
+      if (catalogMarketsConflict(existing, market)) {
+        diagnostics.conflictingDuplicateRows += 1;
+      }
+    }
     if (
       !existing ||
       (existing.phase === "primary" && market.phase === "secondary") ||
@@ -158,6 +164,24 @@ export function analyzeCatalogMarkets(
   const markets = [...byId.values()];
   diagnostics.finalValidRows = markets.length;
   return { markets, diagnostics };
+}
+
+function catalogMarketsConflict(
+  left: NormalizedCatalogMarket,
+  right: NormalizedCatalogMarket,
+): boolean {
+  return (
+    left.category !== right.category ||
+    left.title !== right.title ||
+    left.description !== right.description ||
+    left.phase !== right.phase ||
+    left.marketType !== right.marketType ||
+    left.startTime !== right.startTime ||
+    left.endTime !== right.endTime ||
+    left.resolutionTime !== right.resolutionTime ||
+    left.region !== right.region ||
+    left.volumeUsdc !== right.volumeUsdc
+  );
 }
 
 export function normalizeAndDeduplicateMarkets(

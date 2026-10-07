@@ -2,9 +2,9 @@
 
 Panta Market Radar is a standalone, read-only prediction-market intelligence project built with Next.js and TypeScript.
 
-Task 1 provides the API foundation: it loads up to 50 active primary and 50 secondary catalog markets, validates and filters them, and exposes at most 20 preselected candidates through `GET /api/radar`. Current-price, trade-activity, Radar Score, and dashboard work are intentionally deferred.
+Task 1 provides the API foundation: it loads up to three 50-row pages for each active lifecycle, validates and filters them, and exposes at most 20 preselected candidates through `GET /api/radar`. Discovery stops early when cursors end or 20 valid unique markets are available, and can never exceed six list requests per snapshot. Current-price, trade-activity, Radar Score, and dashboard work are intentionally deferred.
 
-In development, `/api/radar` also returns aggregate catalog rejection diagnostics. These diagnostics are omitted from production responses.
+In development, `/api/radar` also returns aggregate catalog rejection diagnostics. Rejection counters are not mutually exclusive, and diagnostics are omitted from production responses.
 
 ## Setup
 
