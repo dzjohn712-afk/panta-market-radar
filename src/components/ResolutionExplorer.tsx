@@ -27,8 +27,10 @@ export default function ResolutionExplorer({markets}: {markets: ResolvedMarketIt
     {visible.length ? <div className="resolved-list">
       <div className="resolved-header" aria-hidden="true"><span>Market</span><span>Outcome</span><span>Observed volume</span><span>Resolved</span></div>
       {visible.map(({market,outcome}) => <Link prefetch={false} className="resolved-row" key={market.marketId} href={`/markets/${market.marketId}`}>
-        <div className="resolved-title"><span className="category">{market.category}</span><strong>{market.title} <span aria-hidden="true">↗</span></strong><small>{market.marketType ?? "Type unavailable"}</small></div>
-        <OutcomeBadge outcome={outcome} /><strong>{formatUsdc(market.volumeUsdc)}</strong><span>{formatDateTime(market.resolutionTime)}</span>
+        <div className="resolved-title"><span className="row-label">Category </span><span className="category">{market.category}</span><strong>{market.title} <span aria-hidden="true">↗</span></strong><small>{market.marketType ?? "Type unavailable"}</small></div>
+        <div><span className="row-label">Outcome </span><OutcomeBadge outcome={outcome} /></div>
+        <div><span className="row-label">Observed volume </span><strong>{formatUsdc(market.volumeUsdc)}</strong></div>
+        <div><span className="row-label">Resolution time </span><span>{formatDateTime(market.resolutionTime)}</span></div>
       </Link>)}
     </div> : <div className="empty-state compact"><span>NO MATCHING RECORDS</span><h3>No resolutions match these filters</h3><button onClick={() => {setCategory("all");setOutcome("all");}}>Clear filters</button></div>}
   </>;

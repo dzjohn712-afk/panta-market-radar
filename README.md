@@ -1,29 +1,42 @@
 # Panta Market Radar
 
-Panta Market Radar is a standalone, read-only **Live Market & Resolution Intelligence** product built with Next.js and TypeScript.
+**Live Market & Resolution Intelligence** — a standalone, read-only Next.js + TypeScript application. Powered by Panta.
 
-Task 1 provides the API foundation: it loads up to three 50-row pages for each active lifecycle, validates and filters them, and exposes at most 20 preselected candidates through `GET /api/radar`. Discovery stops early when cursors end or 20 valid unique markets are available, and can never exceed six list requests per snapshot. Current-price, trade-activity, Radar Score, and dashboard work are intentionally deferred.
+## Implemented
 
-The live snapshot enriches active candidates with detail prices and recent trade activity. Resolved discovery first validates one filtered page; if none are valid, it samples at most two unfiltered pages, sorts and selects at most ten resolved markets. It calculates Market Pulse only from selected markets.
+- Live market probabilities from detail responses and recent timestamped trade activity.
+- A sampled Resolution Explorer with category/outcome filters and market detail pages.
+- Market Pulse metrics derived only from the loaded sample.
+- Explicit unavailable states for missing prices, volume, activity, or resolved discovery.
 
-The homepage and `/api/radar` call the same loader backed by Next.js Data Cache with 150-second revalidation. The API has no additional browser/CDN response cache. Compare the API's `generatedAt` with the homepage's `data-snapshot-generated-at` to verify the generation. Missing or invalid prices/volumes remain `null` and render as unavailable; numeric zero remains zero. If any selected market volume is unavailable, its pulse volume total is also unavailable rather than an incomplete sum.
+No wallets, transactions, authentication, AI, database, or persistent market history.
 
-In development, `/api/radar` also returns aggregate catalog rejection diagnostics. Rejection counters are not mutually exclusive, and diagnostics are omitted from production responses.
+## Run locally
 
-## Setup
+Requires Node.js **22.18.0 or newer**.
 
-1. Copy `.env.example` to `.env.local`.
-2. Set `PANTA_API_KEY` to a Panta server API key.
-3. Run `npm install` and `npm run dev`.
+1. Run `npm install`.
+2. Copy `.env.example` to `.env.local` and configure:
+   - `PANTA_API_BASE_URL`: fixed upstream URL, normally `https://live-api.panta.market/api/v1`.
+   - `PANTA_API_KEY`: your server-side Panta API key.
+3. Run `npm run dev` and open `http://localhost:3000`.
 
-The API key is read only by the server-only Panta client and is never accepted from browser requests.
+For a production build, run `npm run build`, then `npm start`.
 
-**Powered by Panta**
+Validation: `npm run lint`, `npm run typecheck`, and `npm test`.
 
-## Market Intelligence Detail & Resolution Explorer
+## Data and cache semantics
 
-Live cards and resolution rows open `/markets/[marketId]`. A focused server-only loader captures a detail response and, for valid active markets, at most 200 trade rows. Resolved or inactive markets skip trade fetching. Detail snapshots have their own timestamp and a 150-second cache; they may differ from the homepage sample captured earlier.
+The homepage and `/api/radar` share a Next.js cache with 150-second revalidation. Detail pages capture separate snapshots. Cache identities include environment and normalized upstream URL, never credentials.
 
-The Resolution Explorer filters the already loaded sample by category and YES / NO / Unknown outcome. Changing filters does not fetch upstream data. Market links disable automatic prefetching to keep API usage tied to navigation.
+Discovery scans at most three 50-row pages per active phase and selects at most 20 candidates. Resolved discovery tries one filtered page and, when necessary, up to two unfiltered pages, selecting at most ten markets. These are observed samples, not global Panta totals or a complete archive.
 
-Unavailable prices and volumes remain unavailable, and resolved outcomes are inferred only from unambiguous detail price pairs. The interface supports keyboard links, visible focus, and narrow-screen layouts. No remote images are required.
+Detail/trade enrichment uses one pool of five markets (at most ten upstream HTTP requests during enrichment). Conflicting resolved/cancelled detail evidence excludes a candidate from Live Now. A resolved-discovery failure preserves active data and marks the resolved section unavailable.
+
+Unknown, invalid, and future trade timestamps remain unclassified; window counts cover only valid timestamps. A full 200-row trade tape may be truncated. Missing data is never substituted with numeric zero.
+
+## Demo topology and security
+
+The in-flight promise guard prevents duplicate cold radar builds **within one Node process** and clears after success or failure. It does not coordinate multiple instances. Use a single-instance demo or an explicitly understood shared-cache topology; development and production namespaces are separate. Next.js may serve the prior snapshot while revalidating.
+
+`.env.local` is ignored. Never commit secrets. API credentials stay server-only, upstream access is GET-only, and there is no generic proxy or trading functionality. Products display **Powered by Panta**.

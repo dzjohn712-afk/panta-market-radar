@@ -66,8 +66,8 @@ export function summarizeActivity(
   nowSeconds = Math.floor(Date.now() / 1_000),
 ): ActivitySummary {
   const validTimes = trades
-    .map((trade) => trade.blockTime)
-    .filter((time): time is number => Number.isInteger(time) && Number(time) > 0);
+    .map((trade) => trade?.blockTime)
+    .filter((time): time is number => typeof time === "number" && Number.isInteger(time) && time > 0 && time <= nowSeconds);
 
   return {
     activityUnavailable: false,
@@ -75,6 +75,8 @@ export function summarizeActivity(
     trades24h: validTimes.filter((time) => time >= nowSeconds - 86_400).length,
     latestTradeTime: validTimes.length > 0 ? Math.max(...validTimes) : null,
     observedTradeCount: trades.length,
+    timestampedTradeCount: validTimes.length,
+    unclassifiedTradeCount: trades.length - validTimes.length,
     mayBeTruncated: trades.length === 200,
   };
 }
@@ -86,6 +88,8 @@ export function unavailableActivity(): ActivitySummary {
     trades24h: null,
     latestTradeTime: null,
     observedTradeCount: null,
+    timestampedTradeCount: null,
+    unclassifiedTradeCount: null,
     mayBeTruncated: false,
   };
 }
@@ -110,6 +114,7 @@ export function inferResolvedOutcome(prices: MarketPrices): ResolvedOutcome {
 export function buildPulse(
   live: readonly LiveMarketItem[],
   resolved: readonly ResolvedMarketItem[],
+  resolvedAvailable = true,
 ): MarketPulse {
   const categories = new Set<string>();
   for (const item of live) categories.add(item.market.category);
@@ -117,10 +122,10 @@ export function buildPulse(
 
   return {
     activeMarketsObserved: live.length,
-    recentResolvedObserved: resolved.length,
+    recentResolvedObserved: resolvedAvailable ? resolved.length : null,
     categoriesObserved: [...categories].sort(),
     activeVolumeObserved: observedVolume(live),
-    resolvedVolumeObserved: observedVolume(resolved),
+    resolvedVolumeObserved: resolvedAvailable ? observedVolume(resolved) : null,
   };
 }
 
@@ -134,6 +139,13 @@ export function activeWithPrices(
   detail: PantaMarket | null,
 ): NormalizedCatalogMarket & MarketPrices {
   return { ...market, ...pricesFromDetail(detail, market.phase) };
+}
+
+export function hasLifecycleConflict(detail: PantaMarket): boolean {
+  const inactive = new Set(["resolved", "cancelled", "canceled"]);
+  return detail.resolved === true ||
+    inactive.has(typeof detail.phase === "string" ? detail.phase.trim().toLowerCase() : "") ||
+    inactive.has(typeof detail.status === "string" ? detail.status.trim().toLowerCase() : "");
 }
 
 export function resolvedWithPrices(

@@ -66,9 +66,11 @@ export default async function Home() {
       <section className="section" aria-labelledby="resolved-heading">
         <div className="section-heading">
           <div><p className="section-index">02 / RECENTLY RESOLVED</p><h2 id="resolved-heading">Resolution ledger</h2></div>
-          <span className="count-pill">{snapshot.recentlyResolved.length} observed</span>
+          <span className="count-pill">{snapshot.coverage.resolved.available ? `${snapshot.recentlyResolved.length} observed` : "Unavailable"}</span>
         </div>
-        {snapshot.recentlyResolved.length === 0 ? (
+        {!snapshot.coverage.resolved.available ? (
+          <div className="data-unavailable">Resolved-market data temporarily unavailable</div>
+        ) : snapshot.recentlyResolved.length === 0 ? (
           <div className="empty-state compact"><span>NO RECENT RECORDS</span><h3>No resolved markets were returned in this sample</h3></div>
         ) : (
           <ResolutionExplorer markets={snapshot.recentlyResolved} />
@@ -82,7 +84,7 @@ export default async function Home() {
         </div>
         <div className="pulse-grid">
           <div className="pulse-card"><span>Live markets observed</span><strong>{snapshot.pulse.activeMarketsObserved}</strong></div>
-          <div className="pulse-card"><span>Recent resolutions observed</span><strong>{snapshot.pulse.recentResolvedObserved}</strong></div>
+          <div className="pulse-card"><span>Recent resolutions observed</span><strong>{snapshot.pulse.recentResolvedObserved ?? "—"}</strong></div>
           <div className="pulse-card"><span>Active observed volume</span><strong data-active-volume>{formatUsdc(snapshot.pulse.activeVolumeObserved)}</strong></div>
           <div className="pulse-card"><span>Resolved observed volume</span><strong>{formatUsdc(snapshot.pulse.resolvedVolumeObserved)}</strong></div>
         </div>

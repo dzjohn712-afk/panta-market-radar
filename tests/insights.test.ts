@@ -48,6 +48,8 @@ test("aggregates recent activity using only valid block times", () => {
     trades24h: 2,
     latestTradeTime: NOW - 100,
     observedTradeCount: 4,
+    timestampedTradeCount: 3,
+    unclassifiedTradeCount: 1,
     mayBeTruncated: false,
   });
 });

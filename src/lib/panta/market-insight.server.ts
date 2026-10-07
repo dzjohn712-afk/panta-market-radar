@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { getMarket, getMarketTrades, PantaApiError, validateMarketId } from "./client.server";
 import { buildMarketInsight } from "./market-insight";
+import { upstreamNamespace } from "./cache-namespace";
 
 async function loadMarketInsight(marketId: string) {
   const detail = await getMarket(marketId);
@@ -20,7 +21,8 @@ async function loadMarketInsight(marketId: string) {
 }
 
 const cachedMarketInsight = unstable_cache(loadMarketInsight.bind(null),
-  ["panta-market-insight-v3", process.env.NODE_ENV ?? "unknown"], { revalidate: 150 });
+  ["panta-market-insight-v31", process.env.NODE_ENV ?? "unknown",
+    upstreamNamespace(process.env.PANTA_API_BASE_URL)], { revalidate: 150 });
 
 export async function getMarketInsight(marketId: string) {
   return cachedMarketInsight(validateMarketId(marketId));

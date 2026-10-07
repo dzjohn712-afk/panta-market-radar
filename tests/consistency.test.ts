@@ -95,7 +95,7 @@ test("detail volume cannot overwrite catalog volume and missing pulse volumes re
   assert.equal(activeWithPrices(market, row(1, {volumeUsdc:0})).volumeUsdc, 11);
   const pulse = buildPulse([{market:{...activeWithPrices(market,null), volumeUsdc:null}, activity:{
     activityUnavailable:true, trades1h:null, trades24h:null, latestTradeTime:null,
-    observedTradeCount:null, mayBeTruncated:false,
+    observedTradeCount:null, timestampedTradeCount:null, unclassifiedTradeCount:null, mayBeTruncated:false,
   }}], []);
   assert.equal(pulse.activeVolumeObserved, null);
   assert.equal(pulse.resolvedVolumeObserved, 0);

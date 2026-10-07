@@ -18,11 +18,12 @@ export function ActivityMetrics({activity, showCount = false}: {activity: Activi
   if (activity.activityUnavailable) return <div className="data-unavailable">Recent activity unavailable</div>;
   return <>
     <div className="metric-grid">
-      <div className="metric"><span>Last hour</span><strong>{activity.trades1h}</strong><small>trades</small></div>
-      <div className="metric"><span>Last 24h</span><strong>{activity.trades24h}</strong><small>trades</small></div>
+      <div className="metric"><span>Last hour</span><strong>{activity.trades1h}</strong><small>timestamped trades</small></div>
+      <div className="metric"><span>Last 24h</span><strong>{activity.trades24h}</strong><small>timestamped trades</small></div>
       <div className="metric metric-wide"><span>Latest trade</span><strong className="metric-time">{formatDateTime(activity.latestTradeTime)}</strong></div>
     </div>
-    {showCount && <p className="sample-note">{activity.observedTradeCount} trade rows observed in this response.</p>}
+    {activity.unclassifiedTradeCount > 0 && <p className="notice">{activity.unclassifiedTradeCount} observed {activity.unclassifiedTradeCount === 1 ? "trade has" : "trades have"} unknown or anomalous timing; recent counts cover timestamped trades only.</p>}
+    {showCount && <p className="sample-note">{activity.observedTradeCount} trade rows observed · {activity.timestampedTradeCount} with valid timestamps.</p>}
     {activity.mayBeTruncated && <p className="notice">Activity may be truncated at the 200-row API limit.</p>}
   </>;
 }

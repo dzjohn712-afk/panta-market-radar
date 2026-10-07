@@ -96,6 +96,8 @@ export interface ActivityAvailable {
   trades24h: number;
   latestTradeTime: number | null;
   observedTradeCount: number;
+  timestampedTradeCount: number;
+  unclassifiedTradeCount: number;
   mayBeTruncated: boolean;
 }
 
@@ -105,6 +107,8 @@ export interface ActivityUnavailable {
   trades24h: null;
   latestTradeTime: null;
   observedTradeCount: null;
+  timestampedTradeCount: null;
+  unclassifiedTradeCount: null;
   mayBeTruncated: false;
 }
 
@@ -124,7 +128,7 @@ export interface ResolvedMarketItem {
 
 export interface MarketPulse {
   activeMarketsObserved: number;
-  recentResolvedObserved: number;
+  recentResolvedObserved: number | null;
   categoriesObserved: string[];
   activeVolumeObserved: number | null;
   resolvedVolumeObserved: number | null;
@@ -141,11 +145,12 @@ export interface ActiveCoverage {
 }
 
 export interface ResolvedCoverage {
-  rowsFetched: number;
-  filteredRowsFetched: number;
-  fallbackPagesFetched: number;
-  validMarkets: number;
-  marketsSelected: number;
+  available: boolean;
+  rowsFetched: number | null;
+  filteredRowsFetched: number | null;
+  fallbackPagesFetched: number | null;
+  validMarkets: number | null;
+  marketsSelected: number | null;
 }
 
 export interface RadarCoverage {
@@ -176,6 +181,7 @@ export interface RadarCatalogSnapshot {
   /** Present only in development; never part of the production API response. */
   diagnostics?: {
     active: CatalogDiagnostics;
+    lifecycleConflicts: number;
   };
 }
 
