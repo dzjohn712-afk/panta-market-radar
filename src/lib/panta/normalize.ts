@@ -2,6 +2,7 @@ import type {
   ActiveMarketStatus,
   CatalogDiagnostics,
   NormalizedCatalogMarket,
+  NormalizedResolvedMarket,
   PantaMarket,
 } from "./types";
 
@@ -189,6 +190,75 @@ export function normalizeAndDeduplicateMarkets(
   nowSeconds = Math.floor(Date.now() / 1_000),
 ): NormalizedCatalogMarket[] {
   return analyzeCatalogMarkets(rows, nowSeconds).markets;
+}
+
+export function normalizeResolvedMarkets(
+  rows: readonly PantaMarket[] | readonly unknown[],
+): NormalizedResolvedMarket[] {
+  const byId = new Map<string, NormalizedResolvedMarket>();
+
+  for (const value of rows) {
+    const row = asRecord(value);
+    if (!row) continue;
+
+    const marketId = optionalString(row.marketId);
+    const title = optionalString(row.title);
+    const phase = optionalString(row.phase)?.toLowerCase();
+    const status = optionalString(row.status)?.toLowerCase();
+    const isResolved = row.resolved === true || phase === "resolved" || status === "resolved";
+    const hasResolutionTime =
+      row.resolutionTime !== undefined &&
+      row.resolutionTime !== null &&
+      row.resolutionTime !== "";
+    const resolutionTime = optionalTimestamp(row.resolutionTime);
+
+    if (!marketId || !MARKET_ID_PATTERN.test(marketId) || !title || !isResolved) continue;
+    if (hasResolutionTime && resolutionTime === null) continue;
+
+    const market: NormalizedResolvedMarket = {
+      marketId,
+      category: optionalString(row.category)?.toLowerCase() ?? "other",
+      title,
+      description: optionalString(row.description),
+      phase: "resolved",
+      marketType: optionalString(row.marketType),
+      endTime: optionalTimestamp(row.endTime),
+      resolutionTime,
+      region: optionalString(row.region),
+      volumeUsdc: nonNegativeNumber(row.volumeUsdc),
+    };
+
+    const existing = byId.get(marketId);
+    if (
+      !existing ||
+      (market.resolutionTime ?? -1) > (existing.resolutionTime ?? -1)
+    ) {
+      byId.set(marketId, market);
+    }
+  }
+
+  return [...byId.values()]
+    .sort(
+      (left, right) =>
+        (right.resolutionTime ?? -1) - (left.resolutionTime ?? -1) ||
+        left.marketId.localeCompare(right.marketId),
+    );
+}
+
+export function selectRecentlyResolved(
+  markets: readonly NormalizedResolvedMarket[],
+  limit = 10,
+): NormalizedResolvedMarket[] {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+    throw new RangeError("resolved market limit must be an integer between 1 and 10");
+  }
+  return [...markets]
+    .sort(
+      (left, right) =>
+        (right.resolutionTime ?? -1) - (left.resolutionTime ?? -1) ||
+        left.marketId.localeCompare(right.marketId),
+    )
+    .slice(0, limit);
 }
 
 function byVolumeThenClose(a: NormalizedCatalogMarket, b: NormalizedCatalogMarket): number {

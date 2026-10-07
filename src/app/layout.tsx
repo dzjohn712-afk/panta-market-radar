@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Panta Market Radar",
-  description: "Read-only prediction-market intelligence powered by Panta.",
+  description: "Live market and resolution intelligence powered by Panta.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

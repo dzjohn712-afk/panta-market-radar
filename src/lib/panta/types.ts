@@ -1,4 +1,5 @@
 export type ActiveMarketStatus = "primary" | "secondary";
+export type MarketListStatus = ActiveMarketStatus | "resolved";
 
 /** Documented GET /markets/ and GET /markets/{marketId}/ response fields. */
 export interface PantaMarket {
@@ -70,13 +71,84 @@ export interface NormalizedCatalogMarket {
   volumeUsdc: number;
 }
 
-export interface RadarCoverage {
+export interface NormalizedResolvedMarket {
+  marketId: string;
+  category: string;
+  title: string;
+  description: string | null;
+  phase: "resolved";
+  marketType: string | null;
+  endTime: number | null;
+  resolutionTime: number | null;
+  region: string | null;
+  volumeUsdc: number;
+}
+
+export interface MarketPrices {
+  yesProbability: number | null;
+  noProbability: number | null;
+  priceUnavailable: boolean;
+}
+
+export interface ActivityAvailable {
+  activityUnavailable: false;
+  trades1h: number;
+  trades24h: number;
+  latestTradeTime: number | null;
+  observedTradeCount: number;
+  mayBeTruncated: boolean;
+}
+
+export interface ActivityUnavailable {
+  activityUnavailable: true;
+  trades1h: null;
+  trades24h: null;
+  latestTradeTime: null;
+  observedTradeCount: null;
+  mayBeTruncated: false;
+}
+
+export type ActivitySummary = ActivityAvailable | ActivityUnavailable;
+
+export interface LiveMarketItem {
+  market: NormalizedCatalogMarket & MarketPrices;
+  activity: ActivitySummary;
+}
+
+export type ResolvedOutcome = "yes" | "no" | "unknown";
+
+export interface ResolvedMarketItem {
+  market: NormalizedResolvedMarket & MarketPrices;
+  outcome: ResolvedOutcome;
+}
+
+export interface MarketPulse {
+  activeMarketsObserved: number;
+  recentResolvedObserved: number;
+  categoriesObserved: string[];
+  activeVolumeObserved: number;
+  resolvedVolumeObserved: number;
+}
+
+export interface ActiveCoverage {
   primaryPagesFetched: number;
   secondaryPagesFetched: number;
   primaryFetched: number;
   secondaryFetched: number;
-  validAfterFiltering: number;
+  rawRows: number;
+  validMarkets: number;
   candidatesSelected: number;
+}
+
+export interface ResolvedCoverage {
+  rowsFetched: number;
+  validMarkets: number;
+  marketsSelected: number;
+}
+
+export interface RadarCoverage {
+  active: ActiveCoverage;
+  resolved: ResolvedCoverage;
 }
 
 export interface CatalogDiagnostics {
@@ -96,7 +168,11 @@ export interface CatalogDiagnostics {
 export interface RadarCatalogSnapshot {
   generatedAt: string;
   coverage: RadarCoverage;
-  markets: NormalizedCatalogMarket[];
+  live: LiveMarketItem[];
+  recentlyResolved: ResolvedMarketItem[];
+  pulse: MarketPulse;
   /** Present only in development; never part of the production API response. */
-  diagnostics?: CatalogDiagnostics;
+  diagnostics?: {
+    active: CatalogDiagnostics;
+  };
 }

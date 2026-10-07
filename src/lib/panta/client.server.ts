@@ -1,7 +1,7 @@
 import "server-only";
 
 import type {
-  ActiveMarketStatus,
+  MarketListStatus,
   PantaMarket,
   PantaMarketsResponse,
   PantaTradesResponse,
@@ -127,7 +127,7 @@ async function pantaGet<T>(path: string, query?: URLSearchParams): Promise<T> {
 }
 
 export async function listMarkets(options: {
-  status: ActiveMarketStatus;
+  status: MarketListStatus;
   limit?: number;
   category?: string;
   cursor?: string;
@@ -150,7 +150,11 @@ export async function listMarkets(options: {
 }
 
 export async function getMarket(marketId: string): Promise<PantaMarket> {
-  return pantaGet<PantaMarket>(`markets/${validateMarketId(marketId)}`);
+  const response = await pantaGet<unknown>(`markets/${validateMarketId(marketId)}`);
+  if (typeof response !== "object" || response === null || Array.isArray(response)) {
+    throw new PantaApiError("Panta returned an invalid market detail", 502, "PANTA_INVALID_RESPONSE");
+  }
+  return response as PantaMarket;
 }
 
 export async function getMarketTrades(
@@ -158,8 +162,17 @@ export async function getMarketTrades(
   limit = 50,
 ): Promise<PantaTradesResponse> {
   const query = new URLSearchParams({ limit: String(validateLimit(limit, 200)) });
-  return pantaGet<PantaTradesResponse>(
+  const response = await pantaGet<unknown>(
     `markets/${validateMarketId(marketId)}/trades`,
     query,
   );
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    !("items" in response) ||
+    !Array.isArray((response as { items?: unknown }).items)
+  ) {
+    throw new PantaApiError("Panta returned an invalid trade list", 502, "PANTA_INVALID_RESPONSE");
+  }
+  return response as PantaTradesResponse;
 }
