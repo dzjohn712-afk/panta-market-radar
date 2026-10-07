@@ -14,6 +14,7 @@ import type {
 const OUTCOME_EPSILON = 0.02;
 
 function probability(value: unknown): number | null {
+  if (typeof value !== "number" && (typeof value !== "string" || !value.trim())) return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number >= 0 && number <= 1 ? number : null;
 }
@@ -118,12 +119,14 @@ export function buildPulse(
     activeMarketsObserved: live.length,
     recentResolvedObserved: resolved.length,
     categoriesObserved: [...categories].sort(),
-    activeVolumeObserved: live.reduce((total, item) => total + item.market.volumeUsdc, 0),
-    resolvedVolumeObserved: resolved.reduce(
-      (total, item) => total + item.market.volumeUsdc,
-      0,
-    ),
+    activeVolumeObserved: observedVolume(live),
+    resolvedVolumeObserved: observedVolume(resolved),
   };
+}
+
+function observedVolume(items: readonly { market: { volumeUsdc: number | null } }[]): number | null {
+  if (items.some((item) => item.market.volumeUsdc === null)) return null;
+  return items.reduce((total, item) => total + (item.market.volumeUsdc ?? 0), 0);
 }
 
 export function activeWithPrices(

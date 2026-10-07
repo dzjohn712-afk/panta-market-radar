@@ -1,7 +1,9 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 
 import { getMarket, getMarketTrades, listMarkets } from "./client.server";
 import { discoverActiveCatalog } from "./discovery";
+import { discoverResolvedCatalog } from "./resolved-discovery";
 import {
   activeWithPrices,
   buildPulse,
@@ -11,9 +13,7 @@ import {
   unavailableActivity,
 } from "./insights";
 import {
-  normalizeResolvedMarkets,
   selectCatalogCandidates,
-  selectRecentlyResolved,
 } from "./normalize";
 import type {
   LiveMarketItem,
@@ -26,9 +26,6 @@ import type {
 const CATALOG_LIMIT_PER_PHASE = 50;
 const SNAPSHOT_TTL_MS = 150_000;
 
-let cachedSnapshot: RadarCatalogSnapshot | null = null;
-let cachedUntil = 0;
-let pendingSnapshot: Promise<RadarCatalogSnapshot> | null = null;
 
 async function enrichLiveMarket(
   market: NormalizedCatalogMarket,
@@ -66,17 +63,16 @@ async function enrichResolvedMarket(
   };
 }
 
-async function buildRadarCatalogSnapshot(): Promise<RadarCatalogSnapshot> {
-  const [discovery, resolvedPage] = await Promise.all([
+async function buildRadarSnapshot(): Promise<RadarCatalogSnapshot> {
+  const [discovery, resolvedDiscovery] = await Promise.all([
     discoverActiveCatalog((status, cursor) =>
       listMarkets({ status, limit: CATALOG_LIMIT_PER_PHASE, cursor }),
     ),
-    listMarkets({ status: "resolved", limit: 50 }),
+    discoverResolvedCatalog(listMarkets),
   ]);
 
   const candidates = selectCatalogCandidates(discovery.validMarkets, 20);
-  const validResolved = normalizeResolvedMarkets(resolvedPage.items);
-  const resolvedSelection = selectRecentlyResolved(validResolved, 10);
+  const resolvedSelection = resolvedDiscovery.selected;
   const nowSeconds = Math.floor(Date.now() / 1_000);
 
   const [live, recentlyResolved] = await Promise.all([
@@ -96,11 +92,7 @@ async function buildRadarCatalogSnapshot(): Promise<RadarCatalogSnapshot> {
         validMarkets: discovery.validMarkets.length,
         candidatesSelected: candidates.length,
       },
-      resolved: {
-        rowsFetched: resolvedPage.items.length,
-        validMarkets: validResolved.length,
-        marketsSelected: resolvedSelection.length,
-      },
+      resolved: resolvedDiscovery.coverage,
     },
     live,
     recentlyResolved,
@@ -118,22 +110,16 @@ async function buildRadarCatalogSnapshot(): Promise<RadarCatalogSnapshot> {
   return snapshot;
 }
 
-export async function getRadarCatalogSnapshot(): Promise<RadarCatalogSnapshot> {
-  const now = Date.now();
-  if (cachedSnapshot && now < cachedUntil) return cachedSnapshot;
-  if (pendingSnapshot) return pendingSnapshot;
-
-  pendingSnapshot = buildRadarCatalogSnapshot()
-    .then((snapshot) => {
-      cachedSnapshot = snapshot;
-      cachedUntil = Date.now() + SNAPSHOT_TTL_MS;
-      return snapshot;
-    })
-    .finally(() => {
-      pendingSnapshot = null;
-    });
-
-  return pendingSnapshot;
-}
+// Next's Data Cache is shared by page and Route Handler bundles, whereas
+// module-local variables (and even globalThis in dev contexts) are not.
+// unstable_cache hashes callback.toString() as well as keyParts. Production
+// minifiers rename local identifiers differently in each bundle. A bound
+// callback has a stable native-function string; the explicit versioned key
+// identifies this builder across both bundles.
+export const getRadarSnapshot = unstable_cache(
+  buildRadarSnapshot.bind(null),
+  ["panta-radar-snapshot-v21-shared", process.env.NODE_ENV ?? "unknown"],
+  { revalidate: SNAPSHOT_TTL_MS / 1_000 },
+);
 
 export const radarSnapshotTtlSeconds = SNAPSHOT_TTL_MS / 1_000;

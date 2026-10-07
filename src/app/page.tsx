@@ -1,4 +1,5 @@
-import { getRadarCatalogSnapshot } from "@/lib/panta/catalog.server";
+import { getRadarSnapshot } from "@/lib/panta/catalog.server";
+import { formatProbability, formatUsdc } from "@/lib/panta/format";
 import type {
   ActivitySummary,
   MarketPrices,
@@ -19,19 +20,6 @@ function formatDateTime(timestamp: number | string | null): string {
   return Number.isNaN(date.getTime()) ? "Not available" : `${dateTimeFormatter.format(date)} UTC`;
 }
 
-function formatUsdc(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: value >= 1_000 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatProbability(value: number | null): string {
-  return value === null ? "—" : `${Math.round(value * 100)}%`;
-}
-
 function formatRemaining(endTime: number, generatedAt: string): string {
   const seconds = endTime - Math.floor(new Date(generatedAt).getTime() / 1_000);
   if (seconds <= 0) return "Closed";
@@ -43,10 +31,10 @@ function formatRemaining(endTime: number, generatedAt: string): string {
 }
 
 function PricePanel({ prices }: { prices: MarketPrices }) {
-  if (prices.priceUnavailable) {
+  if (prices.priceUnavailable || prices.yesProbability === null || prices.noProbability === null) {
     return <div className="data-unavailable">Current price unavailable</div>;
   }
-  const yesWidth = `${Math.round((prices.yesProbability ?? 0) * 100)}%`;
+  const yesWidth = formatProbability(prices.yesProbability);
   return (
     <div className="price-panel">
       <div className="price-values">
@@ -79,9 +67,9 @@ function OutcomeBadge({ outcome }: { outcome: ResolvedOutcome }) {
 }
 
 export default async function Home() {
-  const snapshot = await getRadarCatalogSnapshot();
+  const snapshot = await getRadarSnapshot();
   return (
-    <main className="shell">
+    <main className="shell" data-snapshot-generated-at={snapshot.generatedAt}>
       <header className="hero">
         <div className="brand-row">
           <div className="brand-mark" aria-hidden="true">P</div>
@@ -114,7 +102,7 @@ export default async function Home() {
                 <h3>{market.title}</h3>
                 <PricePanel prices={market} />
                 <div className="market-facts">
-                  <div><span>Volume</span><strong>{formatUsdc(market.volumeUsdc)}</strong></div>
+                  <div><span>Volume</span><strong data-live-volume>{formatUsdc(market.volumeUsdc)}</strong></div>
                   <div><span>Time remaining</span><strong>{formatRemaining(market.endTime, snapshot.generatedAt)}</strong></div>
                 </div>
                 <ActivityMetrics activity={activity} />
@@ -154,7 +142,7 @@ export default async function Home() {
         <div className="pulse-grid">
           <div className="pulse-card"><span>Active markets</span><strong>{snapshot.pulse.activeMarketsObserved}</strong></div>
           <div className="pulse-card"><span>Recent resolutions</span><strong>{snapshot.pulse.recentResolvedObserved}</strong></div>
-          <div className="pulse-card"><span>Active volume</span><strong>{formatUsdc(snapshot.pulse.activeVolumeObserved)}</strong></div>
+          <div className="pulse-card"><span>Active volume</span><strong data-active-volume>{formatUsdc(snapshot.pulse.activeVolumeObserved)}</strong></div>
           <div className="pulse-card"><span>Resolved volume</span><strong>{formatUsdc(snapshot.pulse.resolvedVolumeObserved)}</strong></div>
         </div>
         <div className="categories-observed">

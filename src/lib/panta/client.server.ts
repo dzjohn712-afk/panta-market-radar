@@ -127,13 +127,14 @@ async function pantaGet<T>(path: string, query?: URLSearchParams): Promise<T> {
 }
 
 export async function listMarkets(options: {
-  status: MarketListStatus;
+  status?: MarketListStatus;
   limit?: number;
   category?: string;
   cursor?: string;
 }): Promise<PantaMarketsResponse> {
   const limit = validateLimit(options.limit ?? 20, 50);
-  const query = new URLSearchParams({ status: options.status, limit: String(limit) });
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (options.status) query.set("status", options.status);
   if (options.category?.trim()) query.set("category", options.category.trim());
   if (options.cursor?.trim()) query.set("cursor", options.cursor.trim());
 

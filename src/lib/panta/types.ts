@@ -68,7 +68,7 @@ export interface NormalizedCatalogMarket {
   endTime: number;
   resolutionTime: number | null;
   region: string | null;
-  volumeUsdc: number;
+  volumeUsdc: number | null;
 }
 
 export interface NormalizedResolvedMarket {
@@ -81,7 +81,7 @@ export interface NormalizedResolvedMarket {
   endTime: number | null;
   resolutionTime: number | null;
   region: string | null;
-  volumeUsdc: number;
+  volumeUsdc: number | null;
 }
 
 export interface MarketPrices {
@@ -126,8 +126,8 @@ export interface MarketPulse {
   activeMarketsObserved: number;
   recentResolvedObserved: number;
   categoriesObserved: string[];
-  activeVolumeObserved: number;
-  resolvedVolumeObserved: number;
+  activeVolumeObserved: number | null;
+  resolvedVolumeObserved: number | null;
 }
 
 export interface ActiveCoverage {
@@ -142,6 +142,8 @@ export interface ActiveCoverage {
 
 export interface ResolvedCoverage {
   rowsFetched: number;
+  filteredRowsFetched: number;
+  fallbackPagesFetched: number;
   validMarkets: number;
   marketsSelected: number;
 }

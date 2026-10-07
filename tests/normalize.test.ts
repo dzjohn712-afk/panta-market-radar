@@ -40,16 +40,16 @@ test("normalizes a valid active catalog row without catalog prices", () => {
   assert.equal("yesPrice" in (normalized ?? {}), false);
 });
 
-test("preserves valid volumeUsdc numeric strings and safely defaults invalid values", () => {
-  const cases: Array<[PantaMarket["volumeUsdc"], number]> = [
+test("preserves valid volumeUsdc numeric strings and marks invalid values unavailable", () => {
+  const cases: Array<[PantaMarket["volumeUsdc"], number | null]> = [
     ["11.00", 11],
     ["349.369134", 349.369134],
     ["0.00", 0],
-    ["not-a-number", 0],
-    ["", 0],
-    [-1, 0],
-    [Number.POSITIVE_INFINITY, 0],
-    [undefined, 0],
+    ["not-a-number", null],
+    ["", null],
+    [-1, null],
+    [Number.POSITIVE_INFINITY, null],
+    [undefined, null],
   ];
 
   for (const [raw, expected] of cases) {

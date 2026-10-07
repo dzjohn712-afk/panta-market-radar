@@ -25,14 +25,14 @@ function optionalTimestamp(value: unknown): number | null {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
-function nonNegativeNumber(value: unknown): number {
+function nonNegativeNumber(value: unknown): number | null {
   const number =
     typeof value === "number"
       ? value
       : typeof value === "string" && value.trim()
         ? Number(value)
         : Number.NaN;
-  return Number.isFinite(number) && number >= 0 ? number : 0;
+  return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
 interface MarketInspection {
@@ -156,7 +156,7 @@ export function analyzeCatalogMarkets(
     if (
       !existing ||
       (existing.phase === "primary" && market.phase === "secondary") ||
-      (existing.phase === market.phase && market.volumeUsdc > existing.volumeUsdc)
+      (existing.phase === market.phase && (market.volumeUsdc ?? -1) > (existing.volumeUsdc ?? -1))
     ) {
       byId.set(market.marketId, market);
     }
@@ -262,11 +262,11 @@ export function selectRecentlyResolved(
 }
 
 function byVolumeThenClose(a: NormalizedCatalogMarket, b: NormalizedCatalogMarket): number {
-  return b.volumeUsdc - a.volumeUsdc || a.endTime - b.endTime || a.marketId.localeCompare(b.marketId);
+  return (b.volumeUsdc ?? -1) - (a.volumeUsdc ?? -1) || a.endTime - b.endTime || a.marketId.localeCompare(b.marketId);
 }
 
 function byCloseThenVolume(a: NormalizedCatalogMarket, b: NormalizedCatalogMarket): number {
-  return a.endTime - b.endTime || b.volumeUsdc - a.volumeUsdc || a.marketId.localeCompare(b.marketId);
+  return a.endTime - b.endTime || (b.volumeUsdc ?? -1) - (a.volumeUsdc ?? -1) || a.marketId.localeCompare(b.marketId);
 }
 
 /**

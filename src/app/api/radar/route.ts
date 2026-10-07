@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getRadarCatalogSnapshot,
-  radarSnapshotTtlSeconds,
+  getRadarSnapshot,
 } from "@/lib/panta/catalog.server";
 import { PantaApiError } from "@/lib/panta/client.server";
 
@@ -10,10 +9,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const snapshot = await getRadarCatalogSnapshot();
+    const snapshot = await getRadarSnapshot();
     return NextResponse.json(snapshot, {
       headers: {
-        "Cache-Control": `public, s-maxage=${radarSnapshotTtlSeconds}, stale-while-revalidate=30`,
+        "Cache-Control": "no-store",
       },
     });
   } catch (error) {
