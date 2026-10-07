@@ -74,3 +74,56 @@ footer { margin-top:64px; padding-top:20px; border-top:1px solid var(--line); di
 @media (max-width:760px) { .shell{width:min(100% - 24px,1180px);padding-top:12px}.hero{padding:22px 20px}.hero-copy{margin:54px 0 42px}.snapshot-meta{flex-direction:column;gap:10px}.snapshot-meta a{margin-left:0}.section{padding-top:54px}.section-heading{align-items:flex-start}.metric-grid{grid-template-columns:1fr 1fr;gap:18px}.metric-wide{grid-column:1/-1}.resolved-header{display:none}.resolved-row{grid-template-columns:1fr auto}.resolved-row>strong,.resolved-row>span:last-child{grid-column:1}.pulse-grid{grid-template-columns:1fr 1fr}.categories-observed,footer{flex-direction:column}.categories-observed div{justify-content:flex-start} }
 @media (max-width:440px) { .live-indicator{display:none}.hero-copy h2{font-size:39px}.live-card{padding:20px}.market-facts{grid-template-columns:1fr}.market-facts div+div{border-left:0;border-top:1px solid var(--line);padding-left:0}.pulse-grid{grid-template-columns:1fr} }
 @media (prefers-reduced-motion:reduce) { .skeleton{animation:none} }
+
+/* Compact masthead and the existing market-monitor visual direction. */
+.hero-copy { margin:38px 0 30px; max-width:850px; }
+.hero-copy h2 { font-size:clamp(36px,5.3vw,64px); }
+.snapshot-caption { color:var(--muted); margin:12px 0 0; font-size:12px; }
+.market-link { text-decoration:none; }
+.market-link:hover { color:var(--lime); }
+.market-link span { font-size:.65em; color:var(--lime); }
+a:focus-visible,button:focus-visible,select:focus-visible { outline:3px solid var(--lime); outline-offset:5px; }
+.sample-note { color:#aab5bb; font-size:13px; line-height:1.65; }
+.data-unavailable p { margin-bottom:0; line-height:1.6; font-weight:400; }
+.explorer-controls { display:flex; align-items:end; flex-wrap:wrap; gap:16px; margin:20px 0; }
+.explorer-controls label { display:flex; flex-direction:column; gap:8px; color:#b7c2c7; font-size:12px; }
+.explorer-controls select { min-width:180px; padding:11px 32px 11px 12px; background:var(--panel); color:var(--text); border:1px solid #3e4e57; font:inherit; }
+.explorer-controls [role="status"] { margin-left:auto; padding:12px 0; color:#aab5bb; font-size:12px; }
+.resolved-row { text-decoration:none; transition:background-color .15s; }
+.resolved-row:hover,.resolved-row:focus-visible { background:#1a2428; }
+.resolved-row:focus-visible { outline-offset:-3px; }
+.resolved-title { min-width:0; }
+.resolved-title strong { line-height:1.5; overflow-wrap:anywhere; }
+.resolved-title strong span { color:var(--lime); }
+.empty-state button { border:1px solid #4a5b65; background:var(--panel); color:var(--text); padding:10px 16px; margin-top:14px; cursor:pointer; }
+.detail-shell { max-width:980px; }
+.detail-nav { display:flex; justify-content:space-between; gap:20px; padding:12px 0 30px; font-size:13px; }
+.detail-nav a { text-decoration:none; color:var(--lime); }
+.detail-heading { padding:24px 0; }
+.detail-heading h1 { font-size:clamp(28px,5vw,48px); letter-spacing:-.035em; line-height:1.15; overflow-wrap:anywhere; margin:24px 0; }
+.detail-heading .card-topline { margin-top:20px; }
+.detail-description { color:#b7c2c7; line-height:1.65; white-space:pre-line; }
+.market-state { font:700 12px ui-monospace,monospace; padding:8px 10px; border:1px solid var(--line); color:var(--text); }
+.state-live,.state-resolved-yes { color:var(--lime); }
+.state-resolved-no { color:var(--red); }
+.detail-panel { padding:24px; background:var(--panel); border:1px solid var(--line); margin:18px 0; }
+.detail-panel h2 { margin:0 0 20px; font-size:20px; letter-spacing:-.02em; }
+.detail-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; gap:24px; }
+.detail-facts dt { color:#aab5bb; font-size:12px; margin-bottom:8px; }
+.detail-facts dd { margin:0; font-size:15px; overflow-wrap:anywhere; }
+.market-address { overflow-wrap:anywhere; text-transform:none; }
+@media (max-width:760px) {
+  .hero-copy { margin:32px 0 26px; }
+  .resolved-title { display:block; }
+  .resolved-title strong,.resolved-title small { display:block; margin-top:6px; }
+  .detail-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .detail-nav { flex-wrap:wrap; }
+  .explorer-controls [role="status"] { margin-left:0; }
+}
+@media (max-width:440px) {
+  .hero-copy h2 { font-size:36px; }
+  .detail-panel { padding:18px; }
+  .detail-facts { grid-template-columns:1fr; }
+  .explorer-controls label { width:100%; }
+  .detail-heading .card-topline { flex-wrap:wrap; gap:12px; }
+}

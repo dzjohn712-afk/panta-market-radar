@@ -1,10 +1,12 @@
 import type {
   ActiveMarketStatus,
   CatalogDiagnostics,
+  InsightMarket,
   NormalizedCatalogMarket,
   NormalizedResolvedMarket,
   PantaMarket,
 } from "./types";
+import { pricesFromDetail } from "./insights.ts";
 
 const MARKET_ID_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,64}$/;
 const ACTIVE_PHASES = new Set<ActiveMarketStatus>(["primary", "secondary"]);
@@ -33,6 +35,30 @@ function nonNegativeNumber(value: unknown): number | null {
         ? Number(value)
         : Number.NaN;
   return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+/** Detail metadata is allowed to be incomplete; unknown fields stay nullable. */
+export function normalizeMarketDetail(value: unknown, nowSeconds: number): InsightMarket | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  const marketId = optionalString(row.marketId);
+  const title = optionalString(row.title);
+  if (!marketId || !MARKET_ID_PATTERN.test(marketId) || !title) return null;
+  const phase = optionalString(row.phase)?.toLowerCase() ?? "unknown";
+  const status = optionalString(row.status)?.toLowerCase();
+  const isResolved = row.resolved === true || phase === "resolved" || status === "resolved";
+  const endTime = optionalTimestamp(row.endTime);
+  const isActive = !isResolved && ACTIVE_PHASES.has(phase as ActiveMarketStatus) &&
+    !(status && EXCLUDED_STATUSES.has(status)) && endTime !== null && endTime > nowSeconds;
+  return {
+    marketId, title, category: optionalString(row.category)?.toLowerCase() ?? "other",
+    description: optionalString(row.description), phase,
+    marketType: optionalString(row.marketType), region: optionalString(row.region),
+    volumeUsdc: nonNegativeNumber(row.volumeUsdc), startTime: optionalTimestamp(row.startTime),
+    endTime, resolutionTime: optionalTimestamp(row.resolutionTime), isResolved, isActive,
+    ...pricesFromDetail(row as unknown as PantaMarket,
+      isResolved ? "resolved" : phase === "primary" || phase === "secondary" ? phase : undefined),
+  };
 }
 
 interface MarketInspection {

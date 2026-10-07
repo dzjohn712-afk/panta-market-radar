@@ -178,3 +178,26 @@ export interface RadarCatalogSnapshot {
     active: CatalogDiagnostics;
   };
 }
+
+export interface InsightMarket extends MarketPrices {
+  marketId: string;
+  title: string;
+  description: string | null;
+  category: string;
+  phase: string;
+  marketType: string | null;
+  region: string | null;
+  volumeUsdc: number | null;
+  startTime: number | null;
+  endTime: number | null;
+  resolutionTime: number | null;
+  isResolved: boolean;
+  isActive: boolean;
+}
+
+export interface MarketInsight {
+  generatedAt: string;
+  market: InsightMarket;
+  state: "live" | "resolved-yes" | "resolved-no" | "resolution-unknown" | "inactive";
+  activity: ActivitySummary | null;
+}

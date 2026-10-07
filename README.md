@@ -19,3 +19,11 @@ In development, `/api/radar` also returns aggregate catalog rejection diagnostic
 The API key is read only by the server-only Panta client and is never accepted from browser requests.
 
 **Powered by Panta**
+
+## Market Intelligence Detail & Resolution Explorer
+
+Live cards and resolution rows open `/markets/[marketId]`. A focused server-only loader captures a detail response and, for valid active markets, at most 200 trade rows. Resolved or inactive markets skip trade fetching. Detail snapshots have their own timestamp and a 150-second cache; they may differ from the homepage sample captured earlier.
+
+The Resolution Explorer filters the already loaded sample by category and YES / NO / Unknown outcome. Changing filters does not fetch upstream data. Market links disable automatic prefetching to keep API usage tied to navigation.
+
+Unavailable prices and volumes remain unavailable, and resolved outcomes are inferred only from unambiguous detail price pairs. The interface supports keyboard links, visible focus, and narrow-screen layouts. No remote images are required.

@@ -1,24 +1,10 @@
 import { getRadarSnapshot } from "@/lib/panta/catalog.server";
-import { formatProbability, formatUsdc } from "@/lib/panta/format";
-import type {
-  ActivitySummary,
-  MarketPrices,
-  ResolvedOutcome,
-} from "@/lib/panta/types";
+import Link from "next/link";
+import { formatDateTime, formatUsdc } from "@/lib/panta/format";
+import { ActivityMetrics, PricePanel } from "@/components/market-display";
+import ResolutionExplorer from "@/components/ResolutionExplorer";
 
 export const dynamic = "force-dynamic";
-
-const dateTimeFormatter = new Intl.DateTimeFormat("en", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
-});
-
-function formatDateTime(timestamp: number | string | null): string {
-  if (timestamp === null) return "Not available";
-  const date = typeof timestamp === "number" ? new Date(timestamp * 1_000) : new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? "Not available" : `${dateTimeFormatter.format(date)} UTC`;
-}
 
 function formatRemaining(endTime: number, generatedAt: string): string {
   const seconds = endTime - Math.floor(new Date(generatedAt).getTime() / 1_000);
@@ -28,42 +14,6 @@ function formatRemaining(endTime: number, generatedAt: string): string {
   if (days > 0) return `${days}d ${hours}h`;
   const minutes = Math.max(1, Math.floor((seconds % 3_600) / 60));
   return `${hours}h ${minutes}m`;
-}
-
-function PricePanel({ prices }: { prices: MarketPrices }) {
-  if (prices.priceUnavailable || prices.yesProbability === null || prices.noProbability === null) {
-    return <div className="data-unavailable">Current price unavailable</div>;
-  }
-  const yesWidth = formatProbability(prices.yesProbability);
-  return (
-    <div className="price-panel">
-      <div className="price-values">
-        <div><span>YES</span><strong className="yes-value">{formatProbability(prices.yesProbability)}</strong></div>
-        <div><span>NO</span><strong className="no-value">{formatProbability(prices.noProbability)}</strong></div>
-      </div>
-      <div className="probability-track" aria-hidden="true"><span style={{ width: yesWidth }} /></div>
-    </div>
-  );
-}
-
-function ActivityMetrics({ activity }: { activity: ActivitySummary }) {
-  if (activity.activityUnavailable) {
-    return <div className="data-unavailable">Recent activity unavailable</div>;
-  }
-  return (
-    <>
-      <div className="metric-grid">
-        <div className="metric"><span>Last hour</span><strong>{activity.trades1h}</strong><small>trades</small></div>
-        <div className="metric"><span>Last 24h</span><strong>{activity.trades24h}</strong><small>trades</small></div>
-        <div className="metric metric-wide"><span>Latest trade</span><strong className="metric-time">{formatDateTime(activity.latestTradeTime)}</strong></div>
-      </div>
-      {activity.mayBeTruncated && <p className="notice">Activity may be truncated at the 200-row API limit.</p>}
-    </>
-  );
-}
-
-function OutcomeBadge({ outcome }: { outcome: ResolvedOutcome }) {
-  return <span className={`outcome outcome-${outcome}`}>{outcome.toUpperCase()}</span>;
 }
 
 export default async function Home() {
@@ -81,10 +31,11 @@ export default async function Home() {
           <p>A focused view of current markets, recent resolutions, and activity observed through the Panta API.</p>
         </div>
         <div className="snapshot-meta">
-          <span>Last updated {formatDateTime(snapshot.generatedAt)}</span>
+          <span>Snapshot {formatDateTime(snapshot.generatedAt)}</span>
           <span>Observed in the current Panta API sample</span>
           <a href="https://github.com/Kaito-HQ/panta-api-pub" target="_blank" rel="noreferrer">Powered by Panta ↗</a>
         </div>
+      <p className="snapshot-caption">Values reflect the Panta API response captured for this snapshot.</p>
       </header>
 
       <section className="section" aria-labelledby="live-heading">
@@ -99,10 +50,10 @@ export default async function Home() {
             {snapshot.live.map(({ market, activity }) => (
               <article className="live-card" key={market.marketId}>
                 <div className="card-topline"><span className="category">{market.category}</span><span className="phase"><i /> {market.phase}</span></div>
-                <h3>{market.title}</h3>
+                <h3><Link prefetch={false} className="market-link" href={`/markets/${market.marketId}`}>{market.title} <span aria-hidden="true">↗</span></Link></h3>
                 <PricePanel prices={market} />
                 <div className="market-facts">
-                  <div><span>Volume</span><strong data-live-volume>{formatUsdc(market.volumeUsdc)}</strong></div>
+                  <div><span>Observed volume</span><strong data-live-volume>{formatUsdc(market.volumeUsdc)}</strong></div>
                   <div><span>Time remaining</span><strong>{formatRemaining(market.endTime, snapshot.generatedAt)}</strong></div>
                 </div>
                 <ActivityMetrics activity={activity} />
@@ -120,17 +71,7 @@ export default async function Home() {
         {snapshot.recentlyResolved.length === 0 ? (
           <div className="empty-state compact"><span>NO RECENT RECORDS</span><h3>No resolved markets were returned in this sample</h3></div>
         ) : (
-          <div className="resolved-list">
-            <div className="resolved-header" aria-hidden="true"><span>Market</span><span>Outcome</span><span>Volume</span><span>Resolved</span></div>
-            {snapshot.recentlyResolved.map(({ market, outcome }) => (
-              <article className="resolved-row" key={market.marketId}>
-                <div className="resolved-title"><span className="category">{market.category}</span><strong>{market.title}</strong><small>{market.marketType ?? "standard"}</small></div>
-                <OutcomeBadge outcome={outcome} />
-                <strong>{formatUsdc(market.volumeUsdc)}</strong>
-                <span>{formatDateTime(market.resolutionTime)}</span>
-              </article>
-            ))}
-          </div>
+          <ResolutionExplorer markets={snapshot.recentlyResolved} />
         )}
       </section>
 
@@ -140,10 +81,10 @@ export default async function Home() {
           <p className="sample-label">Not global Panta totals</p>
         </div>
         <div className="pulse-grid">
-          <div className="pulse-card"><span>Active markets</span><strong>{snapshot.pulse.activeMarketsObserved}</strong></div>
-          <div className="pulse-card"><span>Recent resolutions</span><strong>{snapshot.pulse.recentResolvedObserved}</strong></div>
-          <div className="pulse-card"><span>Active volume</span><strong data-active-volume>{formatUsdc(snapshot.pulse.activeVolumeObserved)}</strong></div>
-          <div className="pulse-card"><span>Resolved volume</span><strong>{formatUsdc(snapshot.pulse.resolvedVolumeObserved)}</strong></div>
+          <div className="pulse-card"><span>Live markets observed</span><strong>{snapshot.pulse.activeMarketsObserved}</strong></div>
+          <div className="pulse-card"><span>Recent resolutions observed</span><strong>{snapshot.pulse.recentResolvedObserved}</strong></div>
+          <div className="pulse-card"><span>Active observed volume</span><strong data-active-volume>{formatUsdc(snapshot.pulse.activeVolumeObserved)}</strong></div>
+          <div className="pulse-card"><span>Resolved observed volume</span><strong>{formatUsdc(snapshot.pulse.resolvedVolumeObserved)}</strong></div>
         </div>
         <div className="categories-observed">
           <span>Categories observed</span>
