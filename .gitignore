@@ -8,6 +8,9 @@
 # production output
 /build
 
+# Hackathon submission materials
+/submission/
+
 # local environment files
 .env*
 !.env.example
